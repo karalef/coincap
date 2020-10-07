@@ -38,7 +38,7 @@ var (
 	ETH = Currency{"ethereum", "ETH"}
 )
 
-// Client ...
+// Client is a default client that is used to execute requests.
 var Client http.Client
 
 var defaultHeader = http.Header{"Accept-Encoding": {"gzip"}}
@@ -71,9 +71,10 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 	// response is coincap normal response.
 	var response struct {
 		Data      json.RawMessage `json:"data"`
-		Timestamp Timestamp       `json:"timestamp"` // UNIX time in milliseconds
+		Timestamp Timestamp       `json:"timestamp"`
 	}
 	if resp.StatusCode != 200 ||
+		resp.Header.Get("Content-Type") != "application/json" ||
 		json.NewDecoder(body).Decode(&response) != nil ||
 		json.Unmarshal(response.Data, dataValue) != nil {
 		bodyBytes, _ := ioutil.ReadAll(body)
@@ -84,11 +85,13 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 }
 
 // Int is an int64 with unmarshal.
+//
+// CoinCap returns numbers as strings.
 type Int struct {
 	Val int64
 }
 
-// UnmarshalJSON ...
+// UnmarshalJSON parses the JSON-encoded data and stores the result.
 func (i *Int) UnmarshalJSON(b []byte) error {
 	s := b2s(b)
 	var err error
@@ -99,11 +102,13 @@ func (i *Int) UnmarshalJSON(b []byte) error {
 }
 
 // Float is a float64 with unmarshal.
+//
+// CoinCap returns numbers as strings.
 type Float struct {
 	Val float64
 }
 
-// UnmarshalJSON ...
+// UnmarshalJSON parses the JSON-encoded data and stores the result.
 func (f *Float) UnmarshalJSON(b []byte) error {
 	s := b2s(b)
 	var err error
