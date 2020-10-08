@@ -41,7 +41,7 @@ var (
 // Client is a default client that is used to execute requests.
 var Client http.Client
 
-var defaultHeader = http.Header{"Accept-Encoding": {"gzip"}}
+var header = http.Header{"Accept-Encoding": {"gzip"}}
 
 func request(dataValue interface{}, endPoint string, query url.Values) Timestamp {
 	resp, err := Client.Do(&http.Request{
@@ -52,7 +52,7 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 			Path:     "/v2/" + endPoint,
 			RawQuery: query.Encode(),
 		},
-		Header: defaultHeader,
+		Header: header,
 	})
 	if err != nil {
 		panic("unexcepted client do error: " + err.Error())
@@ -74,7 +74,7 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 		Timestamp Timestamp       `json:"timestamp"`
 	}
 	if resp.StatusCode != 200 ||
-		resp.Header.Get("Content-Type") != "application/json" ||
+		resp.Header.Get("Content-Type") != "application/json; charset=utf-8" ||
 		json.NewDecoder(body).Decode(&response) != nil ||
 		json.Unmarshal(response.Data, dataValue) != nil {
 		bodyBytes, _ := ioutil.ReadAll(body)
