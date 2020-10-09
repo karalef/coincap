@@ -4,15 +4,15 @@ type exchanges struct{}
 
 // Exchange contains information about a cryptocurrency exchange.
 type Exchange struct {
-	ID                 string    `json:"exchangeId"`         // unique identifier for exchange
-	Name               string    `json:"name"`               // proper name of exchange
-	Rank               Int       `json:"rank"`               // rank in terms of total volume compared to other exchanges
-	PercentTotalVolume Float     `json:"percentTotalVolume"` // perecent of total daily volume in relation to all exchanges
-	VolumeUSD          Float     `json:"volumeUSD"`          // daily volume represented in USD
-	TradingPairs       Int       `json:"tradingPairs"`       // number of trading pairs offered by the exchange
-	Socket             bool      `json:"socket"`             // Whether or not a trade socket is available on this exchange
-	URL                string    `json:"exchangeUrl"`        // url of exchange
-	Updated            Timestamp `json:"updated"`            // Time since information was last updated
+	ID                 string    `json:"exchangeId"`                // unique identifier for exchange
+	Name               string    `json:"name"`                      // proper name of exchange
+	Rank               int       `json:"rank,string"`               // rank in terms of total volume compared to other exchanges
+	PercentTotalVolume float64   `json:"percentTotalVolume,string"` // perecent of total daily volume in relation to all exchanges
+	VolumeUSD          float64   `json:"volumeUSD,string"`          // daily volume represented in USD
+	TradingPairs       int       `json:"tradingPairs,string"`       // number of trading pairs offered by the exchange
+	Socket             bool      `json:"socket"`                    // Whether or not a trade socket is available on this exchange
+	URL                string    `json:"exchangeUrl"`               // url of exchange
+	Updated            Timestamp `json:"updated"`                   // Time since information was last updated
 }
 
 // List returns information about all exchanges currently tracked by CoinCap.

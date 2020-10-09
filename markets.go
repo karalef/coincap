@@ -17,18 +17,18 @@ type MarketsRequest struct {
 
 // Market contains the market data response from the api.
 type Market struct {
-	ExchangeID            string    `json:"exchangeId"`            // unique identifier for exchange
-	Rank                  Int       `json:"rank"`                  // rank in terms of volume transacted in this market
-	BaseSymbol            string    `json:"baseSymbol"`            // most common symbol used to identify this asset
-	BaseID                string    `json:"baseId"`                // unique identifier for this asset. base is the asset purchased
-	QuoteSymbol           string    `json:"quoteSymbol"`           // most common symbol used to identify this asset
-	QuoteID               string    `json:"quoteId"`               // unique identifier for thisasset. quote is the asset used to purchase base
-	PriceQuote            Float     `json:"priceQuote"`            // amount of quote asset traded for 1 unit of base asset
-	PriceUsd              Float     `json:"priceUsd"`              // quote price translated to USD
-	VolumeUsd24Hr         Float     `json:"volumeUsd24Hr"`         // volume transacted in this market in the last 24 hours
-	PercentExchangeVolume Float     `json:"percentExchangeVolume"` // amount of daily volume this market transacts compared to others on this exchange
-	TradesCount24Hr       Int       `json:"tradesCount24Hr"`       // number of trades on this market in the last 24 hours
-	Updated               Timestamp `json:"updated"`               // last time information was received from this market
+	ExchangeID            string    `json:"exchangeId"`                   // unique identifier for exchange
+	Rank                  int       `json:"rank,string"`                  // rank in terms of volume transacted in this market
+	BaseSymbol            string    `json:"baseSymbol"`                   // most common symbol used to identify this asset
+	BaseID                string    `json:"baseId"`                       // unique identifier for this asset. base is the asset purchased
+	QuoteSymbol           string    `json:"quoteSymbol"`                  // most common symbol used to identify this asset
+	QuoteID               string    `json:"quoteId"`                      // unique identifier for thisasset. quote is the asset used to purchase base
+	PriceQuote            float64   `json:"priceQuote,string"`            // amount of quote asset traded for 1 unit of base asset
+	PriceUsd              float64   `json:"priceUsd,string"`              // quote price translated to USD
+	VolumeUsd24Hr         float64   `json:"volumeUsd24Hr,string"`         // volume transacted in this market in the last 24 hours
+	PercentExchangeVolume float64   `json:"percentExchangeVolume,string"` // amount of daily volume this market transacts compared to others on this exchange
+	TradesCount24Hr       int       `json:"tradesCount24Hr,string"`       // number of trades on this market in the last 24 hours
+	Updated               Timestamp `json:"updated"`                      // last time information was received from this market
 }
 
 // Markets requests market data for all markets matching the criteria set in the MarketRequest params.

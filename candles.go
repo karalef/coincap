@@ -9,12 +9,12 @@ type candles struct{}
 
 // Candle represets historic market performance for an asset over a given time span.
 type Candle struct {
-	Open   Float     `json:"open"`   // the price (quote) at which the first transaction was completed in a given time period
-	High   Float     `json:"high"`   // the top price (quote) at which the base was traded during the time period
-	Low    Float     `json:"low"`    // the bottom price (quote) at which the base was traded during the time period
-	Close  Float     `json:"close"`  // the price (quote) at which the last transaction was completed in a given time period
-	Volume Float     `json:"volume"` // the amount of base asset traded in the given time period
-	Period Timestamp `json:"period"` // timestamp for starting of that time period
+	Open   float64   `json:"open,string"`   // the price (quote) at which the first transaction was completed in a given time period
+	High   float64   `json:"high,string"`   // the top price (quote) at which the base was traded during the time period
+	Low    float64   `json:"low,string"`    // the bottom price (quote) at which the base was traded during the time period
+	Close  float64   `json:"close,string"`  // the price (quote) at which the last transaction was completed in a given time period
+	Volume float64   `json:"volume,string"` // the amount of base asset traded in the given time period
+	Period Timestamp `json:"period"`        // timestamp for starting of that time period
 }
 
 // Candles returns all the market candle data for the provided exchange and parameters.

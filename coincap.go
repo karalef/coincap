@@ -84,40 +84,6 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 	return response.Timestamp
 }
 
-// Int is an int64 with unmarshal.
-//
-// CoinCap returns numbers as strings.
-type Int struct {
-	Val int64
-}
-
-// UnmarshalJSON parses the JSON-encoded data and stores the result.
-func (i *Int) UnmarshalJSON(b []byte) error {
-	s := b2s(b)
-	var err error
-	if s != "null" {
-		i.Val, err = strconv.ParseInt(s[1:len(s)-1], 10, 64)
-	}
-	return err
-}
-
-// Float is a float64 with unmarshal.
-//
-// CoinCap returns numbers as strings.
-type Float struct {
-	Val float64
-}
-
-// UnmarshalJSON parses the JSON-encoded data and stores the result.
-func (f *Float) UnmarshalJSON(b []byte) error {
-	s := b2s(b)
-	var err error
-	if s != "null" {
-		f.Val, err = strconv.ParseFloat(s[1:len(s)-1], 64)
-	}
-	return err
-}
-
 // TrimParams contains limit and offset parameters.
 type TrimParams struct {
 	Limit  uint // maximum number of results.
