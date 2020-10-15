@@ -30,20 +30,18 @@ func (p *IntervalParams) set(v *url.Values, candlesIntervals bool) error {
 	}
 	v.Set("interval", intervals[p.Interval].str)
 
-	if span := p.End.Sub(p.Start); span < 0 || p.End.After(time.Now()) {
+	if p.Start.IsZero() && p.End.IsZero() {
+		return nil
+	}
+
+	if span := p.End.Sub(p.Start); span < 0 || p.Start.IsZero() || p.End.After(time.Now()) {
 		return errors.New("invalid time span")
 	} else if span < intervals[p.Interval].dur {
 		return errors.New("invalid interval: bigger then time span")
-	} else if span > 0 {
-		start, end := MakeTimestamp(p.Start), MakeTimestamp(p.End)
-		if start != 0 && end == 0 {
-			return errors.New("invalid time span: there is a start, but no end")
-		} else if end != 0 && start == 0 {
-			return errors.New("invalid time span: there is an end, but no start")
-		}
-		v.Set("start", start.String())
-		v.Set("end", end.String())
 	}
+
+	v.Set("start", MakeTimestamp(p.Start))
+	v.Set("end", MakeTimestamp(p.End))
 
 	return nil
 }
@@ -51,18 +49,14 @@ func (p *IntervalParams) set(v *url.Values, candlesIntervals bool) error {
 // Timestamp is UNIX time in milliseconds.
 type Timestamp int64
 
-func (t Timestamp) String() string {
-	return strconv.FormatInt(int64(t), 10)
-}
-
 // Time converts CoinCap timestamp into local time.
 func (t Timestamp) Time() time.Time {
 	return time.Unix(0, int64(t)*1e6)
 }
 
 // MakeTimestamp converts local time into CoinCap timestamp.
-func MakeTimestamp(ltime time.Time) Timestamp {
-	return Timestamp(ltime.UnixNano() / 1e6)
+func MakeTimestamp(ltime time.Time) string {
+	return strconv.FormatInt(ltime.UnixNano()/1e6, 10)
 }
 
 // Interval represents point-in-time intervals for retrieving historical market data
