@@ -2,8 +2,6 @@ package coincap
 
 import "net/url"
 
-type assets struct{}
-
 // Asset contains CoinCap asset data from exchanges.
 type Asset struct {
 	ID                string  `json:"id"`                       // unique identifier for asset
@@ -19,33 +17,44 @@ type Asset struct {
 	Vwap24Hr          float64 `json:"vwap24Hr,string"`          // Volume Weighted Average Price in the last 24 hours
 }
 
-// List returns a list of all CoinCap Assets.
-func (assets) List() ([]Asset, Timestamp) {
-	return Assets.Get("", nil, nil)
+// Assets returns a list of all CoinCap assets.
+func (c *Client) Assets() ([]Asset, Timestamp, error) {
+	return c.AssetsSearch("", nil)
 }
 
-// Get returns a list of CoinCap Assets with params.
-func (assets) Get(search string, ids []string, params *TrimParams) ([]Asset, Timestamp) {
+// AssetsSearch returns a list of CoinCap assets with params.
+func (c *Client) AssetsSearch(search string, params *TrimParams) ([]Asset, Timestamp, error) {
 	var q = make(url.Values)
-	if ids != nil {
-		for _, id := range ids {
-			q.Add("ids", id)
-		}
-	} else {
-		if search != "" {
-			q.Set("search", search)
-		}
-		params.set(&q)
+	if search != "" {
+		q.Set("search", search)
+	}
+	setTrim(params, &q)
+
+	var list []Asset
+	ts, err := c.request(&list, "assets", q)
+	return list, ts, err
+}
+
+// AssetsSearchByIDs returns a list of CoinCap assets.
+func (c *Client) AssetsSearchByIDs(ids []string) ([]Asset, Timestamp, error) {
+	if ids == nil {
+		return nil, 0, nil
+	}
+	var q = make(url.Values)
+	for _, id := range ids {
+		q.Add("ids", id)
 	}
 
 	var list []Asset
-	return list, request(&list, "assets", q)
+	ts, err := c.request(&list, "assets", q)
+	return list, ts, err
 }
 
-// GetByID returns an asset by its ID.
-func (assets) ByID(id string) (*Asset, Timestamp) {
+// AssetByID returns an asset by its ID.
+func (c *Client) AssetByID(id string) (*Asset, Timestamp, error) {
 	var a Asset
-	return &a, request(&a, "assets/"+id, nil)
+	ts, err := c.request(&a, "assets/"+id, nil)
+	return &a, ts, err
 }
 
 // AssetHistory contains the USD price of an asset at a given timestamp.
@@ -54,15 +63,17 @@ type AssetHistory struct {
 	Time     Timestamp `json:"time"`            // timestamp correlating to the given price
 }
 
-// History returns USD price history of a given asset.
-func (assets) History(id string, params *IntervalParams) ([]AssetHistory, Timestamp, error) {
+// AssetHistory returns USD price history of a given asset.
+func (c *Client) AssetHistory(id string, params *IntervalParams) ([]AssetHistory, Timestamp, error) {
 	var q = make(url.Values)
-	if err := params.set(&q, false); err != nil {
+	var err = setInterval(params, &q, false)
+	if err != nil {
 		return nil, 0, err
 	}
 
 	var history []AssetHistory
-	return history, request(&history, "assets/"+id+"/history", q), nil
+	ts, err := c.request(&history, "assets/"+id+"/history", q)
+	return history, ts, err
 }
 
 // AssetMarket contains the markets info of an asset.
@@ -77,11 +88,14 @@ type AssetMarket struct {
 	VolumePercent float64 `json:"volumePercent,string"` // percent of quote asset volume
 }
 
-// Markets returns markets info of a given asset.
-func (assets) Markets(id string, params *TrimParams) ([]AssetMarket, Timestamp) {
+// AssetMarkets returns markets info of a given asset.
+func (c *Client) AssetMarkets(id string, params *TrimParams) ([]AssetMarket, Timestamp, error) {
 	var q = make(url.Values)
-	params.set(&q)
+	if params != nil {
+		setTrim(params, &q)
+	}
 
 	var m []AssetMarket
-	return m, request(&m, "assets/"+id+"/markets", q)
+	ts, err := c.request(&m, "assets/"+id+"/markets", q)
+	return m, ts, err
 }

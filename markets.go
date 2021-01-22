@@ -2,9 +2,7 @@ package coincap
 
 import "net/url"
 
-type markets struct{}
-
-// MarketsRequest contains the paramters you can use to provide a request for market data.
+// MarketsRequest contains the parameters you can use to provide a request for market data.
 type MarketsRequest struct {
 	ExchangeID  string // search by unique exchange ID
 	BaseSymbol  string // return all results with this base symbol
@@ -22,7 +20,7 @@ type Market struct {
 	BaseSymbol            string    `json:"baseSymbol"`                   // most common symbol used to identify this asset
 	BaseID                string    `json:"baseId"`                       // unique identifier for this asset. base is the asset purchased
 	QuoteSymbol           string    `json:"quoteSymbol"`                  // most common symbol used to identify this asset
-	QuoteID               string    `json:"quoteId"`                      // unique identifier for thisasset. quote is the asset used to purchase base
+	QuoteID               string    `json:"quoteId"`                      // unique identifier for this asset. quote is the asset used to purchase base
 	PriceQuote            float64   `json:"priceQuote,string"`            // amount of quote asset traded for 1 unit of base asset
 	PriceUsd              float64   `json:"priceUsd,string"`              // quote price translated to USD
 	VolumeUsd24Hr         float64   `json:"volumeUsd24Hr,string"`         // volume transacted in this market in the last 24 hours
@@ -32,9 +30,9 @@ type Market struct {
 }
 
 // Markets requests market data for all markets matching the criteria set in the MarketRequest params.
-func (markets) List(marketsParams MarketsRequest, params *TrimParams) ([]Market, Timestamp) {
+func (c *Client) Markets(marketsParams MarketsRequest, params *TrimParams) ([]Market, Timestamp, error) {
 	var q = make(url.Values)
-	params.set(&q)
+	setTrim(params, &q)
 	if marketsParams.ExchangeID != "" {
 		q.Set("exchange", marketsParams.ExchangeID)
 	}
@@ -58,5 +56,6 @@ func (markets) List(marketsParams MarketsRequest, params *TrimParams) ([]Market,
 	}
 
 	var m []Market
-	return m, request(&m, "markets", q)
+	ts, err := c.request(&m, "markets", q)
+	return m, ts, err
 }

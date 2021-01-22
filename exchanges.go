@@ -1,7 +1,5 @@
 package coincap
 
-type exchanges struct{}
-
 // Exchange contains information about a cryptocurrency exchange.
 type Exchange struct {
 	ID                 string    `json:"exchangeId"`                // unique identifier for exchange
@@ -15,14 +13,16 @@ type Exchange struct {
 	Updated            Timestamp `json:"updated"`                   // Time since information was last updated
 }
 
-// List returns information about all exchanges currently tracked by CoinCap.
-func (exchanges) List() ([]Exchange, Timestamp) {
+// Exchanges returns information about all exchanges currently tracked by CoinCap.
+func (c *Client) List() ([]Exchange, Timestamp, error) {
 	var e []Exchange
-	return e, request(&e, "exchanges", nil)
+	ts, err := c.request(&e, "exchanges", nil)
+	return e, ts, err
 }
 
 // ByID returns exchange data for an exchange with the given unique ID.
-func (exchanges) ByID(id string) (*Exchange, Timestamp) {
+func (c *Client) ExchangeByID(id string) (*Exchange, Timestamp, error) {
 	var e Exchange
-	return &e, request(&e, "exchanges/"+id, nil)
+	ts, err := c.request(&e, "exchanges/"+id, nil)
+	return &e, ts, err
 }

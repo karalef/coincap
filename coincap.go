@@ -1,50 +1,36 @@
+package coincap
+
+import (
+	"compress/gzip"
+	"encoding/json"
+	"errors"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+)
+
 //
 // https://docs.coincap.io
 //
 // https://api.coincap.io/v2
 //
 
-package coincap
-
-import (
-	"compress/gzip"
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
-	"unsafe"
-)
-
-// API
-var (
-	Assets    assets
-	Rates     rates
-	Exchanges exchanges
-	Markets   markets
-	Candles   candles
-)
-
-// Currency contains currency id and symbol.
-type Currency struct {
-	ID     string
-	Symbol string
+// NewClient creates new CoinCap client.
+func NewClient(httpClient *http.Client) Client {
+	return Client{httpClient}
 }
 
-// Some currencies
-var (
-	USD = Currency{"united-states-dollar", "USD"}
-	BTC = Currency{"bitcoin", "BTC"}
-	ETH = Currency{"ethereum", "ETH"}
-)
-
-// Client is a default client that is used to execute requests.
-var Client http.Client
+// Client gives access to CoinCap API.
+type Client struct {
+	httpClient *http.Client // httpClient is a client that is used to execute requests.
+}
 
 var header = http.Header{"Accept-Encoding": {"gzip"}}
 
-func request(dataValue interface{}, endPoint string, query url.Values) Timestamp {
-	resp, err := Client.Do(&http.Request{
+func (c *Client) request(dataValue interface{}, endPoint string, query url.Values) (Timestamp, error) {
+	resp, err := c.httpClient.Do(&http.Request{
 		Method: http.MethodGet,
 		URL: &url.URL{
 			Scheme:   "https",
@@ -55,7 +41,15 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 		Header: header,
 	})
 	if err != nil {
-		panic("unexcepted client do error: " + err.Error())
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, errors.New("unexpected http error with status: " + resp.Status)
+	}
+
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json; charset=utf-8" {
+		return 0, errors.New("invalid content type: " + ct)
 	}
 
 	var body = resp.Body
@@ -64,24 +58,77 @@ func request(dataValue interface{}, endPoint string, query url.Values) Timestamp
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		body, err = gzip.NewReader(resp.Body)
 		if err != nil {
-			panic("coincap invalid gzip: " + err.Error())
+			return 0, errors.New("invalid content encoding(" + err.Error() + ")")
 		}
 	}
 
-	// response is coincap normal response.
+	// response is a CoinCap normal response.
 	var response struct {
 		Data      json.RawMessage `json:"data"`
 		Timestamp Timestamp       `json:"timestamp"`
 	}
-	if resp.StatusCode != 200 ||
-		resp.Header.Get("Content-Type") != "application/json; charset=utf-8" ||
-		json.NewDecoder(body).Decode(&response) != nil ||
-		json.Unmarshal(response.Data, dataValue) != nil {
+
+	err = json.NewDecoder(body).Decode(&response)
+
+	if err != nil || json.Unmarshal(response.Data, dataValue) != nil {
 		bodyBytes, _ := ioutil.ReadAll(body)
-		panic("unexcepted coincap response(code " + strconv.Itoa(resp.StatusCode) + "): " + "\n" + string(bodyBytes))
+		return 0, errors.New("unexpected CoinCap response: \n" + string(bodyBytes))
 	}
 
-	return response.Timestamp
+	return response.Timestamp, nil
+}
+
+// Timestamp represents CoinCap timestamp
+// (UNIX time in milliseconds).
+type Timestamp int64
+
+// Time converts CoinCap timestamp into local time.
+func (t Timestamp) Time() time.Time {
+	return time.Unix(0, int64(t)*1e6)
+}
+
+func (t Timestamp) String() string {
+	return strconv.FormatInt(int64(t), 10)
+}
+
+// MakeTimestamp converts human-readable time into CoinCap timestamp.
+func MakeTimestamp(humanTime time.Time) Timestamp {
+	return Timestamp(humanTime.UnixNano() / 1e6)
+}
+
+// interval represents point-in-time intervals for retrieving historical market data
+type interval struct {
+	str string
+	dur time.Duration
+	ext bool
+}
+
+// Valid Intervals for historical market data
+// Used when requesting Asset History and Candles
+var (
+	Hour           = interval{"h1", time.Hour, false}
+	Minute         = interval{"m1", time.Minute, false}
+	FiveMinutes    = interval{"m5", 5 * time.Minute, false}
+	FifteenMinutes = interval{"m15", 15 * time.Minute, false}
+	ThirtyMinutes  = interval{"m30", 30 * time.Minute, false}
+	TwoHours       = interval{"h2", 2 * time.Hour, false}
+	SixHours       = interval{"h6", 6 * time.Hour, false}
+	TwelveHours    = interval{"h12", 12 * time.Hour, false}
+	Day            = interval{"d1", 24 * time.Hour, false}
+	FourHours      = interval{"h4", 4 * time.Hour, true}
+	EightHours     = interval{"h8", 8 * time.Hour, true}
+	Week           = interval{"w1", 7 * 24 * time.Hour, true}
+)
+
+// interval errors.
+var (
+	InvalidInterval = errors.New("invalid interval")
+	InvalidTimeSpan = errors.New("invalid time span")
+	IntervalBigger  = errors.New("invalid interval: bigger then time span")
+)
+
+func utoa(num uint) string {
+	return strconv.FormatUint(uint64(num), 10)
 }
 
 // TrimParams contains limit and offset parameters.
@@ -90,7 +137,14 @@ type TrimParams struct {
 	Offset uint // skip the first N entries of the result set.
 }
 
-func (p *TrimParams) set(v *url.Values) {
+// IntervalParams contains interval and time span parameters.
+type IntervalParams struct {
+	Interval interval  // point-in-time interval.
+	Start    time.Time // start time.
+	End      time.Time // end time.
+}
+
+func setTrim(p *TrimParams, v *url.Values) {
 	if p == nil {
 		return
 	}
@@ -100,15 +154,35 @@ func (p *TrimParams) set(v *url.Values) {
 		}
 		v.Set("limit", utoa(p.Limit))
 	}
-	v.Set("offset", utoa(p.Offset))
+	if p.Offset != 0 {
+		v.Set("offset", utoa(p.Offset))
+	}
 }
 
-// b2s converts bytes slice to string without allocation.
-func b2s(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
-}
+func setInterval(p *IntervalParams, v *url.Values, candles bool) error {
+	if p == nil {
+		v.Set("interval", Hour.str)
+		return nil
+	}
 
-// utoa returns the string representation of num.
-func utoa(num uint) string {
-	return strconv.FormatUint(uint64(num), 10)
+	if !candles && p.Interval.ext {
+		return InvalidInterval
+	}
+
+	v.Set("interval", p.Interval.str)
+
+	if p.Start.IsZero() && p.End.IsZero() {
+		return nil
+	}
+
+	if span := p.End.Sub(p.Start); span < 0 || p.Start.IsZero() || p.End.After(time.Now()) {
+		return InvalidTimeSpan
+	} else if span < p.Interval.dur {
+		return IntervalBigger
+	}
+
+	v.Set("start", MakeTimestamp(p.Start).String())
+	v.Set("end", MakeTimestamp(p.End).String())
+
+	return nil
 }

@@ -5,9 +5,7 @@ import (
 	"net/url"
 )
 
-type candles struct{}
-
-// Candle represets historic market performance for an asset over a given time span.
+// Candle represents historic market performance for an asset over a given time span.
 type Candle struct {
 	Open   float64   `json:"open,string"`   // the price (quote) at which the first transaction was completed in a given time period
 	High   float64   `json:"high,string"`   // the top price (quote) at which the base was traded during the time period
@@ -19,7 +17,7 @@ type Candle struct {
 
 // Candles returns all the market candle data for the provided exchange and parameters.
 // The fields ExchangeID, BaseID, QuoteID, and Interval are required by the API.
-func (candles) List(exchangeID, baseID, quoteID string, interval *IntervalParams, trim *TrimParams) ([]Candle, Timestamp, error) {
+func (c *Client) Candles(exchangeID, baseID, quoteID string, interval *IntervalParams, trim *TrimParams) ([]Candle, Timestamp, error) {
 	// check required parameters.
 	var err error
 	if exchangeID == "" {
@@ -38,12 +36,13 @@ func (candles) List(exchangeID, baseID, quoteID string, interval *IntervalParams
 	q.Set("baseId", baseID)
 	q.Set("quoteId", quoteID)
 
-	err = interval.set(&q, true)
+	err = setInterval(interval, &q, true)
 	if err != nil {
 		return nil, 0, err
 	}
-	trim.set(&q)
+	setTrim(trim, &q)
 
-	var c []Candle
-	return c, request(&c, "candles", q), nil
+	var candles []Candle
+	ts, err := c.request(&candles, "candles", q)
+	return candles, ts, err
 }

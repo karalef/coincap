@@ -1,7 +1,5 @@
 package coincap
 
-type rates struct{}
-
 // Rate contains the exchange rate of a given asset in terms of USD as well as
 // common identifiers for the asset in question and whether or not it is a fiat currency
 type Rate struct {
@@ -12,14 +10,16 @@ type Rate struct {
 	Type           string  `json:"type"`           // type of currency - fiat or crypto
 }
 
-// List returns currency rates standardized in USD.
-func (rates) List() ([]Rate, Timestamp) {
+// Rates returns currency rates standardized in USD.
+func (c *Client) Rates() ([]Rate, Timestamp, error) {
 	var r []Rate
-	return r, request(&r, "rates", nil)
+	ts, err := c.request(&r, "rates", nil)
+	return r, ts, err
 }
 
-// ByID returns the USD rate for the given asset identifier.
-func (rates) ByID(id string) (*Rate, Timestamp) {
+// RateByID returns the USD rate for the given asset identifier.
+func (c *Client) RateByID(id string) (*Rate, Timestamp, error) {
 	var r Rate
-	return &r, request(&r, "rates/"+id, nil)
+	ts, err := c.request(&r, "rates/"+id, nil)
+	return &r, ts, err
 }
