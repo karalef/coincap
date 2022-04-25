@@ -40,13 +40,9 @@ func (c *Client) AssetsSearchByIDs(ids []string) ([]Asset, Timestamp, error) {
 	if ids == nil {
 		return nil, 0, nil
 	}
-	var q = make(url.Values)
-	for _, id := range ids {
-		q.Add("ids", id)
-	}
 
 	var list []Asset
-	ts, err := c.request(&list, "assets", q)
+	ts, err := c.request(&list, "assets", url.Values{"ids": ids})
 	return list, ts, err
 }
 

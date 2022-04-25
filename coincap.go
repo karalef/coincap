@@ -1,7 +1,6 @@
 package coincap
 
 import (
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -24,13 +23,11 @@ func NewClient(httpClient *http.Client) Client {
 
 // Client gives access to CoinCap API.
 type Client struct {
-	httpClient *http.Client // httpClient is a client that is used to execute requests.
+	http *http.Client
 }
 
-var header = http.Header{"Accept-Encoding": {"gzip"}}
-
-func (c *Client) request(dataValue interface{}, endPoint string, query url.Values) (Timestamp, error) {
-	resp, err := c.httpClient.Do(&http.Request{
+func (c *Client) request(dst interface{}, endPoint string, query url.Values) (Timestamp, error) {
+	resp, err := c.http.Do(&http.Request{
 		Method: http.MethodGet,
 		URL: &url.URL{
 			Scheme:   "https",
@@ -38,28 +35,14 @@ func (c *Client) request(dataValue interface{}, endPoint string, query url.Value
 			Path:     "/v2/" + endPoint,
 			RawQuery: query.Encode(),
 		},
-		Header: header,
 	})
 	if err != nil {
 		return 0, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, errors.New("unexpected http error with status: " + resp.Status)
-	}
-
-	if ct := resp.Header.Get("Content-Type"); ct != "application/json; charset=utf-8" {
-		return 0, errors.New("invalid content type: " + ct)
-	}
-
-	var body = resp.Body
-	defer body.Close()
-
-	if resp.Header.Get("Content-Encoding") == "gzip" {
-		body, err = gzip.NewReader(resp.Body)
-		if err != nil {
-			return 0, errors.New("invalid content encoding(" + err.Error() + ")")
-		}
 	}
 
 	// response is a CoinCap normal response.
@@ -68,10 +51,10 @@ func (c *Client) request(dataValue interface{}, endPoint string, query url.Value
 		Timestamp Timestamp       `json:"timestamp"`
 	}
 
-	err = json.NewDecoder(body).Decode(&response)
+	err = json.NewDecoder(resp.Body).Decode(&response)
 
-	if err != nil || json.Unmarshal(response.Data, dataValue) != nil {
-		bodyBytes, _ := ioutil.ReadAll(body)
+	if err != nil || json.Unmarshal(response.Data, dst) != nil {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
 		return 0, errors.New("unexpected CoinCap response: \n" + string(bodyBytes))
 	}
 
@@ -122,9 +105,9 @@ var (
 
 // interval errors.
 var (
-	InvalidInterval = errors.New("invalid interval")
-	InvalidTimeSpan = errors.New("invalid time span")
-	IntervalBigger  = errors.New("invalid interval: bigger then time span")
+	ErrInvalidInterval = errors.New("invalid interval")
+	ErrInvalidTimeSpan = errors.New("invalid time span")
+	ErrIntervalBigger  = errors.New("invalid interval: bigger then time span")
 )
 
 func utoa(num uint) string {
@@ -166,7 +149,7 @@ func setInterval(p *IntervalParams, v *url.Values, candles bool) error {
 	}
 
 	if !candles && p.Interval.ext {
-		return InvalidInterval
+		return ErrInvalidInterval
 	}
 
 	v.Set("interval", p.Interval.str)
@@ -176,9 +159,9 @@ func setInterval(p *IntervalParams, v *url.Values, candles bool) error {
 	}
 
 	if span := p.End.Sub(p.Start); span < 0 || p.Start.IsZero() || p.End.After(time.Now()) {
-		return InvalidTimeSpan
+		return ErrInvalidTimeSpan
 	} else if span < p.Interval.dur {
-		return IntervalBigger
+		return ErrIntervalBigger
 	}
 
 	v.Set("start", MakeTimestamp(p.Start).String())
