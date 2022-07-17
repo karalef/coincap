@@ -38,14 +38,19 @@ client := coincap.New(&http.Client{}, &wsDialer)
 
 ## Examples
 
-### Get Asset data.
-asset, timestamp, err := client.AssetById("bitcoin")
+### Get Asset data
 
-### Get historical data.
+```go
+asset, timestamp, err := client.AssetById("bitcoin")
+```
+
+### Get historical data
+
+```go
 params := coincap.CandlesRequest{
     ExchangeID: "binance",
-	BaseID:     "ethereum",
-	QuoteID     "bitcoin",
+    BaseID:     "ethereum",
+    QuoteID:    "bitcoin",
 }
 
 interval := coincap.IntervalParams{
@@ -55,6 +60,7 @@ interval := coincap.IntervalParams{
 }
 
 candles, timestamp, err := client.Candles(params, &interval, nil)
+```
 
 ### WebSockets
 
