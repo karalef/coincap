@@ -5,6 +5,13 @@ import (
 	"net/url"
 )
 
+// CandlesRequest contains the parameters you can use to provide a request for candles.
+type CandlesRequest struct {
+	ExchangeID string
+	BaseID     string
+	QuoteID    string
+}
+
 // Candle represents historic market performance for an asset over a given time span.
 type Candle struct {
 	Open   float64   `json:"open,string"`   // the price (quote) at which the first transaction was completed in a given time period
@@ -17,30 +24,30 @@ type Candle struct {
 
 // Candles returns all the market candle data for the provided exchange and parameters.
 // The fields ExchangeID, BaseID, QuoteID, and Interval are required by the API.
-func (c *Client) Candles(exchangeID, baseID, quoteID string, interval *IntervalParams, trim *TrimParams) ([]Candle, Timestamp, error) {
+func (c *Client) Candles(params CandlesRequest, interval *IntervalParams, trim *TrimParams) ([]Candle, Timestamp, error) {
 	// check required parameters.
 	var err error
-	if exchangeID == "" {
+	if params.ExchangeID == "" {
 		err = errors.New("ExchangeID is required")
-	} else if baseID == "" {
+	} else if params.BaseID == "" {
 		err = errors.New("BaseID is required")
-	} else if quoteID == "" {
+	} else if params.QuoteID == "" {
 		err = errors.New("QuoteID is required")
 	}
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var q = make(url.Values)
-	q.Set("exchange", exchangeID)
-	q.Set("baseId", baseID)
-	q.Set("quoteId", quoteID)
+	q := make(url.Values)
+	q.Set("exchange", params.ExchangeID)
+	q.Set("baseId", params.BaseID)
+	q.Set("quoteId", params.QuoteID)
 
-	err = setInterval(interval, &q, true)
+	err = interval.setTo(&q, true)
 	if err != nil {
 		return nil, 0, err
 	}
-	setTrim(trim, &q)
+	trim.setTo(&q)
 
 	var candles []Candle
 	ts, err := c.request(&candles, "candles", q)

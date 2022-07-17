@@ -23,12 +23,12 @@ func (c *Client) Assets() ([]Asset, Timestamp, error) {
 }
 
 // AssetsSearch returns a list of CoinCap assets with params.
-func (c *Client) AssetsSearch(search string, params *TrimParams) ([]Asset, Timestamp, error) {
-	var q = make(url.Values)
+func (c *Client) AssetsSearch(search string, trim *TrimParams) ([]Asset, Timestamp, error) {
+	q := make(url.Values)
 	if search != "" {
 		q.Set("search", search)
 	}
-	setTrim(params, &q)
+	trim.setTo(&q)
 
 	var list []Asset
 	ts, err := c.request(&list, "assets", q)
@@ -60,9 +60,9 @@ type AssetHistory struct {
 }
 
 // AssetHistory returns USD price history of a given asset.
-func (c *Client) AssetHistory(id string, params *IntervalParams) ([]AssetHistory, Timestamp, error) {
-	var q = make(url.Values)
-	var err = setInterval(params, &q, false)
+func (c *Client) AssetHistory(id string, interval *IntervalParams) ([]AssetHistory, Timestamp, error) {
+	q := make(url.Values)
+	var err = interval.setTo(&q, false)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -85,11 +85,9 @@ type AssetMarket struct {
 }
 
 // AssetMarkets returns markets info of a given asset.
-func (c *Client) AssetMarkets(id string, params *TrimParams) ([]AssetMarket, Timestamp, error) {
-	var q = make(url.Values)
-	if params != nil {
-		setTrim(params, &q)
-	}
+func (c *Client) AssetMarkets(id string, trim *TrimParams) ([]AssetMarket, Timestamp, error) {
+	q := make(url.Values)
+	trim.setTo(&q)
 
 	var m []AssetMarket
 	ts, err := c.request(&m, "assets/"+id+"/markets", q)

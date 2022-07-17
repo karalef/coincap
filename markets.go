@@ -30,29 +30,29 @@ type Market struct {
 }
 
 // Markets requests market data for all markets matching the criteria set in the MarketRequest params.
-func (c *Client) Markets(marketsParams MarketsRequest, params *TrimParams) ([]Market, Timestamp, error) {
-	var q = make(url.Values)
-	setTrim(params, &q)
-	if marketsParams.ExchangeID != "" {
-		q.Set("exchange", marketsParams.ExchangeID)
+func (c *Client) Markets(params MarketsRequest, trim *TrimParams) ([]Market, Timestamp, error) {
+	q := make(url.Values)
+	trim.setTo(&q)
+	if params.ExchangeID != "" {
+		q.Set("exchange", params.ExchangeID)
 	}
-	if marketsParams.BaseSymbol != "" {
-		q.Set("baseSymbol", marketsParams.BaseSymbol)
+	if params.BaseSymbol != "" {
+		q.Set("baseSymbol", params.BaseSymbol)
 	}
-	if marketsParams.BaseID != "" {
-		q.Set("baseId", marketsParams.BaseID)
+	if params.BaseID != "" {
+		q.Set("baseId", params.BaseID)
 	}
-	if marketsParams.QuoteSymbol != "" {
-		q.Set("quoteSymbol", marketsParams.QuoteSymbol)
+	if params.QuoteSymbol != "" {
+		q.Set("quoteSymbol", params.QuoteSymbol)
 	}
-	if marketsParams.QuoteID != "" {
-		q.Set("quoteId", marketsParams.QuoteID)
+	if params.QuoteID != "" {
+		q.Set("quoteId", params.QuoteID)
 	}
-	if marketsParams.AssetSymbol != "" {
-		q.Set("assetSymbol", marketsParams.AssetSymbol)
+	if params.AssetSymbol != "" {
+		q.Set("assetSymbol", params.AssetSymbol)
 	}
-	if marketsParams.AssetID != "" {
-		q.Set("assetId", marketsParams.AssetID)
+	if params.AssetID != "" {
+		q.Set("assetId", params.AssetID)
 	}
 
 	var m []Market
