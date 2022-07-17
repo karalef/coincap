@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 //
@@ -16,19 +18,24 @@ import (
 // https://api.coincap.io/v2
 //
 
-var DefaultClient = NewClient(nil)
+// DefaultClient is the default client.
+var DefaultClient = NewClient(nil, nil)
 
 // NewClient creates new CoinCap client.
-func NewClient(httpClient *http.Client) Client {
+func NewClient(httpClient *http.Client, wsDialer *websocket.Dialer) Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return Client{httpClient}
+	if wsDialer == nil {
+		wsDialer = websocket.DefaultDialer
+	}
+	return Client{httpClient, wsDialer}
 }
 
 // Client gives access to CoinCap API.
 type Client struct {
 	http *http.Client
+	ws   *websocket.Dialer
 }
 
 func (c *Client) request(dst interface{}, endPoint string, query url.Values) (Timestamp, error) {
@@ -190,13 +197,8 @@ func (p *IntervalParams) setTo(v *url.Values, candles bool) error {
 		return ErrIntervalBigger
 	}
 
-	v.Set("start", MakeTimestamp(p.Start).String())
-	v.Set("end", MakeTimestamp(p.End).String())
+	v.Set("start", Timestamp(p.Start.UnixMilli()).String())
+	v.Set("end", Timestamp(p.End.UnixMilli()).String())
 
 	return nil
-}
-
-// MakeTimestamp converts human-readable time into CoinCap timestamp.
-func MakeTimestamp(humanTime time.Time) Timestamp {
-	return Timestamp(humanTime.UnixNano() / 1e6)
 }
