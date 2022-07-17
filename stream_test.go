@@ -22,7 +22,7 @@ func TestTrades(t *testing.T) {
 		t.Fatal(err)
 	}
 	if e == nil {
-		t.Fatal("123")
+		t.Fatal("binance exchange not found")
 	}
 	if !e.Socket {
 		t.Fatal("binance does not support websockets")

@@ -33,6 +33,9 @@ func (c *Client) Trades(exchange string) (*Stream[Trade], error) {
 	if err != nil {
 		return nil, err
 	}
+	if e == nil {
+		return nil, errors.New("exchange not found")
+	}
 	if !e.Socket {
 		return nil, errors.New("exchange '" + exchange + "' does not support websockets")
 	}

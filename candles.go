@@ -48,8 +48,5 @@ func (c *Client) Candles(params CandlesRequest, interval *IntervalParams, trim *
 		return nil, 0, err
 	}
 	trim.setTo(&q)
-
-	var candles []Candle
-	ts, err := c.request(&candles, "candles", q)
-	return candles, ts, err
+	return requestArray[Candle](c, "candles", q)
 }
