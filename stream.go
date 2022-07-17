@@ -1,9 +1,11 @@
 package coincap
 
 import (
-	"context"
+	"errors"
+	"io"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -26,9 +28,16 @@ type Trade struct {
 // response 'socket':true/false.
 // The trades websocket is the only way to receive individual
 // trade data through CoinCap.
-func (c *Client) Trades(ctx context.Context, exchange string, ch chan<- *Trade) error {
+func (c *Client) Trades(exchange string) (*Stream[Trade], error) {
+	e, _, err := c.ExchangeByID(exchange)
+	if err != nil {
+		return nil, err
+	}
+	if !e.Socket {
+		return nil, errors.New("exchange '" + exchange + "' does not support websockets")
+	}
 	const u = "wss://ws.coincap.io/trades/"
-	return dial(ctx, c.ws, u+exchange, ch)
+	return dial[Trade](c.ws, u+exchange)
 }
 
 // Price implements Unmarshaler interface for float64.
@@ -36,7 +45,7 @@ type Price float64
 
 // UnmarshalJSON is Unmarshaler implementation.
 func (p *Price) UnmarshalJSON(data []byte) error {
-	v, err := strconv.ParseFloat(string(data), 64)
+	v, err := strconv.ParseFloat(string(data[1:len(data)-1]), 64)
 	*p = Price(v)
 	return err
 }
@@ -47,30 +56,101 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 // the websocket.
 // These prices correspond with the values shown in /assets - a value that may
 // change several times per second based on market activity.
+//
 // Emtpy 'assets' means prices for all assets.
-func (c *Client) Prices(ctx context.Context, ch chan<- *map[string]Price, assets ...string) error {
+func (c *Client) Prices(assets ...string) (*Stream[map[string]Price], error) {
 	a := "ALL"
 	if len(assets) > 0 {
+		t, _, err := c.AssetsSearchByIDs(assets)
+		if err != nil {
+			return nil, err
+		}
+		if len(t) != len(assets) {
+			return nil, errors.New("incorrect assets ids")
+		}
 		a = strings.Join(assets, ",")
 	}
 	const u = "wss://ws.coincap.io/prices?assets="
-	return dial(ctx, c.ws, u+a, ch)
+	return dial[map[string]Price](c.ws, u+a)
 }
 
-func dial[T any](ctx context.Context, ws *websocket.Dialer, u string, ch chan<- *T) error {
-	conn, _, err := ws.DialContext(ctx, u, nil)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+// Stream streams data from websocket conneсtion.
+type Stream[T any] struct {
+	conn *websocket.Conn
+	ch   chan *T
+	stop chan struct{}
+	mut  sync.Mutex
+	err  error
+}
 
+// DataChannel returns data channel.
+// It will be closed if there is an error or if the stream is closed.
+func (s *Stream[T]) DataChannel() <-chan *T {
+	return s.ch
+}
+
+// Close closes stream.
+func (s *Stream[T]) Close() {
+	s.mut.Lock()
+	s.conn.Close()
+	close(s.stop)
+	if s.err == nil {
+		close(s.ch)
+	}
+	s.mut.Unlock()
+}
+
+func (s *Stream[T]) Err() error {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	return s.err
+}
+
+func (s *Stream[T]) dial() {
+	var err error
 	for {
-		var v T
-		err = conn.ReadJSON(&v)
+		var r io.Reader
+		_, r, err = s.conn.NextReader()
 		if err != nil {
 			break
 		}
-		ch <- &v
+		var v *T
+		var b []byte
+		v, b, err = decodeJSON[T](r)
+		if err != nil {
+			err = errors.New(string(b))
+			break
+		}
+
+		select {
+		case <-s.stop:
+			return
+		case s.ch <- v:
+		}
 	}
-	return err
+	s.mut.Lock()
+	select {
+	case <-s.stop:
+	default:
+		s.err = err
+		close(s.ch)
+	}
+	s.mut.Unlock()
+	return
+}
+
+func dial[T any](ws *websocket.Dialer, u string) (*Stream[T], error) {
+	conn, _, err := ws.Dial(u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	s := Stream[T]{
+		conn: conn,
+		ch:   make(chan *T),
+		stop: make(chan struct{}),
+	}
+	go s.dial()
+
+	return &s, nil
 }
