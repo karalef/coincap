@@ -15,10 +15,10 @@ type Exchange struct {
 
 // Exchanges returns information about all exchanges currently tracked by CoinCap.
 func (c *Client) Exchanges() ([]Exchange, Timestamp, error) {
-	return requestArray[Exchange](c, "exchanges", nil)
+	return request[[]Exchange](c, "exchanges", nil)
 }
 
 // ExchangeByID returns exchange data for an exchange with the given unique ID.
 func (c *Client) ExchangeByID(id string) (*Exchange, Timestamp, error) {
-	return request[Exchange](c, "exchanges/"+id, nil)
+	return request[*Exchange](c, "exchanges/"+id, nil)
 }

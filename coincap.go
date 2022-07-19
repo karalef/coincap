@@ -38,12 +38,7 @@ type Client struct {
 	ws   *websocket.Dialer
 }
 
-func requestArray[T any](c *Client, endpoint string, query url.Values) ([]T, Timestamp, error) {
-	r, t, err := request[[]T](c, endpoint, query)
-	return *r, t, err
-}
-
-func request[T any](c *Client, endpoint string, query url.Values) (*T, Timestamp, error) {
+func request[T any](c *Client, endpoint string, query url.Values) (T, Timestamp, error) {
 	resp, err := c.http.Do(&http.Request{
 		Method: http.MethodGet,
 		URL: &url.URL{
@@ -54,28 +49,22 @@ func request[T any](c *Client, endpoint string, query url.Values) (*T, Timestamp
 		},
 	})
 	if err != nil {
-		return nil, 0, err
+		var t T
+		return t, 0, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, 0, nil
-		}
-		return nil, 0, errors.New("unexpected http status code: " + resp.Status)
-	}
-
 	r, b, err := decodeJSON[struct {
-		Data      json.RawMessage `json:"data"`
-		Timestamp Timestamp       `json:"timestamp"`
+		Data      T         `json:"data"`
+		Timestamp Timestamp `json:"timestamp"`
 	}](resp.Body)
 
 	if err != nil {
-		return nil, 0, errors.New("coincap: unexpected response:\n" + string(b))
+		var t T
+		return t, 0, errors.New("coincap (" + resp.Status + "): " + string(b))
 	}
 
-	var v T
-	return &v, r.Timestamp, json.Unmarshal(r.Data, &v)
+	return r.Data, r.Timestamp, nil
 }
 
 func decodeJSON[T any](r io.Reader) (*T, []byte, error) {

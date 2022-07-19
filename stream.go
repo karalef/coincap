@@ -28,7 +28,7 @@ type Trade struct {
 // response 'socket':true/false.
 // The trades websocket is the only way to receive individual
 // trade data through CoinCap.
-func (c *Client) Trades(exchange string) (*Stream[Trade], error) {
+func (c *Client) Trades(exchange string) (*Stream[*Trade], error) {
 	e, _, err := c.ExchangeByID(exchange)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (c *Client) Trades(exchange string) (*Stream[Trade], error) {
 		return nil, errors.New("exchange '" + exchange + "' does not support websockets")
 	}
 	const u = "wss://ws.coincap.io/trades/"
-	return dial[Trade](c.ws, u+exchange)
+	return dial[*Trade](c.ws, u+exchange)
 }
 
 // Price implements Unmarshaler interface for float64.
@@ -80,7 +80,7 @@ func (c *Client) Prices(assets ...string) (*Stream[map[string]Price], error) {
 // Stream streams data from websocket conneсtion.
 type Stream[T any] struct {
 	conn *websocket.Conn
-	ch   chan *T
+	ch   chan T
 	stop chan struct{}
 	mut  sync.Mutex
 	err  error
@@ -88,7 +88,7 @@ type Stream[T any] struct {
 
 // DataChannel returns data channel.
 // It will be closed if there is an error or if the stream is closed.
-func (s *Stream[T]) DataChannel() <-chan *T {
+func (s *Stream[T]) DataChannel() <-chan T {
 	return s.ch
 }
 
@@ -128,7 +128,7 @@ func (s *Stream[T]) dial() {
 		select {
 		case <-s.stop:
 			return
-		case s.ch <- v:
+		case s.ch <- *v:
 		}
 	}
 	s.mut.Lock()
@@ -150,7 +150,7 @@ func dial[T any](ws *websocket.Dialer, u string) (*Stream[T], error) {
 
 	s := Stream[T]{
 		conn: conn,
-		ch:   make(chan *T),
+		ch:   make(chan T),
 		stop: make(chan struct{}),
 	}
 	go s.dial()

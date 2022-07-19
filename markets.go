@@ -55,5 +55,5 @@ func (c *Client) Markets(params MarketsRequest, trim *TrimParams) ([]Market, Tim
 		q.Set("assetId", params.AssetID)
 	}
 
-	return requestArray[Market](c, "markets", q)
+	return request[[]Market](c, "markets", q)
 }

@@ -85,7 +85,7 @@ func TestPrices(t *testing.T) {
 			t.Fatal(s.Err())
 		}
 
-		_, ok = (*d)["bitcoin"]
+		_, ok = d["bitcoin"]
 		if !ok {
 			t.Fatal("result has no expected field")
 		}

@@ -12,10 +12,10 @@ type Rate struct {
 
 // Rates returns currency rates standardized in USD.
 func (c *Client) Rates() ([]Rate, Timestamp, error) {
-	return requestArray[Rate](c, "rates", nil)
+	return request[[]Rate](c, "rates", nil)
 }
 
 // RateByID returns the USD rate for the given asset identifier.
 func (c *Client) RateByID(id string) (*Rate, Timestamp, error) {
-	return request[Rate](c, "rates/"+id, nil)
+	return request[*Rate](c, "rates/"+id, nil)
 }

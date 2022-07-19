@@ -48,5 +48,5 @@ func (c *Client) Candles(params CandlesRequest, interval *IntervalParams, trim *
 		return nil, 0, err
 	}
 	trim.setTo(&q)
-	return requestArray[Candle](c, "candles", q)
+	return request[[]Candle](c, "candles", q)
 }

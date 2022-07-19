@@ -30,7 +30,7 @@ func (c *Client) AssetsSearch(search string, trim *TrimParams) ([]Asset, Timesta
 	}
 	trim.setTo(&q)
 
-	return requestArray[Asset](c, "assets", q)
+	return request[[]Asset](c, "assets", q)
 }
 
 // AssetsSearchByIDs returns a list of CoinCap assets.
@@ -38,12 +38,12 @@ func (c *Client) AssetsSearchByIDs(ids []string) ([]Asset, Timestamp, error) {
 	if ids == nil {
 		return nil, 0, nil
 	}
-	return requestArray[Asset](c, "assets", url.Values{"ids": ids})
+	return request[[]Asset](c, "assets", url.Values{"ids": ids})
 }
 
 // AssetByID returns an asset by its ID.
 func (c *Client) AssetByID(id string) (*Asset, Timestamp, error) {
-	return request[Asset](c, "assets/"+id, nil)
+	return request[*Asset](c, "assets/"+id, nil)
 }
 
 // AssetHistory contains the USD price of an asset at a given timestamp.
@@ -59,7 +59,7 @@ func (c *Client) AssetHistory(id string, interval *IntervalParams) ([]AssetHisto
 	if err != nil {
 		return nil, 0, err
 	}
-	return requestArray[AssetHistory](c, "assets/"+id+"/history", q)
+	return request[[]AssetHistory](c, "assets/"+id+"/history", q)
 }
 
 // AssetMarket contains the markets info of an asset.
@@ -78,5 +78,5 @@ type AssetMarket struct {
 func (c *Client) AssetMarkets(id string, trim *TrimParams) ([]AssetMarket, Timestamp, error) {
 	q := make(url.Values)
 	trim.setTo(&q)
-	return requestArray[AssetMarket](c, "assets/"+id+"/markets", q)
+	return request[[]AssetMarket](c, "assets/"+id+"/markets", q)
 }
