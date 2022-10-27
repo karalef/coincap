@@ -54,28 +54,28 @@ func request[T any](c *Client, endpoint string, query url.Values) (T, Timestamp,
 	}
 	defer resp.Body.Close()
 
-	r, b, err := decodeJSON[struct {
+	r, err := decodeJSON[struct {
 		Data      T         `json:"data"`
 		Timestamp Timestamp `json:"timestamp"`
 	}](resp.Body)
 
 	if err != nil {
 		var t T
-		return t, 0, errors.New("coincap (" + resp.Status + "): " + string(b))
+		return t, 0, errors.New("coincap (" + resp.Status + "): " + err.Error())
 	}
 
 	return r.Data, r.Timestamp, nil
 }
 
-func decodeJSON[T any](r io.Reader) (*T, []byte, error) {
+func decodeJSON[T any](r io.Reader) (*T, error) {
 	dec := json.NewDecoder(r)
 	var v T
 	err := dec.Decode(&v)
 	if err != nil {
 		b, _ := io.ReadAll(io.MultiReader(dec.Buffered(), r))
-		return nil, b, err
+		return nil, errors.New(err.Error() + "\n" + string(b))
 	}
-	return &v, nil, nil
+	return &v, nil
 }
 
 // Timestamp represents CoinCap timestamp

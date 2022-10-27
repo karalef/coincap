@@ -2,10 +2,9 @@ package coincap
 
 import (
 	"errors"
-	"io"
 	"strconv"
 	"strings"
-	"sync"
+	"unsafe"
 
 	"github.com/gorilla/websocket"
 )
@@ -43,13 +42,12 @@ func (c *Client) Trades(exchange string) (*Stream[*Trade], error) {
 	return dial[*Trade](c.ws, u+exchange)
 }
 
-// Price implements Unmarshaler interface for float64.
-type Price float64
+type price float64
 
-// UnmarshalJSON is Unmarshaler implementation.
-func (p *Price) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON is json.Unmarshaler implementation.
+func (p *price) UnmarshalJSON(data []byte) error {
 	v, err := strconv.ParseFloat(string(data[1:len(data)-1]), 64)
-	*p = Price(v)
+	*p = price(v)
 	return err
 }
 
@@ -61,7 +59,7 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 // change several times per second based on market activity.
 //
 // Emtpy 'assets' means prices for all assets.
-func (c *Client) Prices(assets ...string) (*Stream[map[string]Price], error) {
+func (c *Client) Prices(assets ...string) (*Stream[map[string]float64], error) {
 	a := "ALL"
 	if len(assets) > 0 {
 		t, _, err := c.AssetsSearchByIDs(assets)
@@ -74,15 +72,15 @@ func (c *Client) Prices(assets ...string) (*Stream[map[string]Price], error) {
 		a = strings.Join(assets, ",")
 	}
 	const u = "wss://ws.coincap.io/prices?assets="
-	return dial[map[string]Price](c.ws, u+a)
+	s, err := dial[map[string]price](c.ws, u+a)
+	return (*Stream[map[string]float64])(unsafe.Pointer(s)), err
 }
 
 // Stream streams data from websocket conneсtion.
 type Stream[T any] struct {
-	conn *websocket.Conn
 	ch   chan T
 	stop chan struct{}
-	mut  sync.Mutex
+	conf chan struct{}
 	err  error
 }
 
@@ -94,35 +92,38 @@ func (s *Stream[T]) DataChannel() <-chan T {
 
 // Close closes stream.
 func (s *Stream[T]) Close() {
-	s.mut.Lock()
-	s.conn.Close()
-	close(s.stop)
-	if s.err == nil {
-		close(s.ch)
+	select {
+	case <-s.stop:
+	default:
+		close(s.stop)
 	}
-	s.mut.Unlock()
+	<-s.conf
 }
 
 func (s *Stream[T]) Err() error {
-	s.mut.Lock()
-	defer s.mut.Unlock()
 	return s.err
 }
 
-func (s *Stream[T]) dial() {
-	var err error
-	for {
-		var r io.Reader
-		_, r, err = s.conn.NextReader()
-		if err != nil {
-			break
+func (s *Stream[T]) dial(conn *websocket.Conn) {
+	defer func() {
+		select {
+		case <-s.stop:
+			s.err = nil
 		}
-		var v *T
-		var b []byte
-		v, b, err = decodeJSON[T](r)
+		conn.Close()
+		close(s.ch)
+		close(s.conf)
+	}()
+	for {
+		_, r, err := conn.NextReader()
 		if err != nil {
-			err = errors.New(string(b))
-			break
+			s.err = err
+			return
+		}
+		v, err := decodeJSON[T](r)
+		if err != nil {
+			s.err = err
+			return
 		}
 
 		select {
@@ -131,15 +132,6 @@ func (s *Stream[T]) dial() {
 		case s.ch <- *v:
 		}
 	}
-	s.mut.Lock()
-	select {
-	case <-s.stop:
-	default:
-		s.err = err
-		close(s.ch)
-	}
-	s.mut.Unlock()
-	return
 }
 
 func dial[T any](ws *websocket.Dialer, u string) (*Stream[T], error) {
@@ -149,11 +141,11 @@ func dial[T any](ws *websocket.Dialer, u string) (*Stream[T], error) {
 	}
 
 	s := Stream[T]{
-		conn: conn,
 		ch:   make(chan T),
 		stop: make(chan struct{}),
+		conf: make(chan struct{}),
 	}
-	go s.dial()
+	go s.dial(conn)
 
 	return &s, nil
 }
